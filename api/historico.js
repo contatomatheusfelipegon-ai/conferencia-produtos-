@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
   try {
     const { blobs } = await list({
       prefix: 'Conferencia_',
-      token: process.env.BLOB_READ_WRITE_TOKEN
+      storeId: 'store_XeCDHbJl1hpJh7WK'
     });
 
     const arquivos = blobs.map(b => ({
