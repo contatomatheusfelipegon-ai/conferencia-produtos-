@@ -3,8 +3,9 @@ const { gerarExcel } = require('../lib/gerarExcel');
 const { put } = require('@vercel/blob');
 const multer = require('multer');
 
-const upload = multer({ storage: multer.memoryStorage() });
+const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN || 'vercel_blob_rw_XeCDHbJl1hpJh7WK_XUQ0FcVLIMA74HgSpO1FrJH1IfhqnW';
 
+const upload = multer({ storage: multer.memoryStorage() });
 module.exports.config = { api: { bodyParser: false } };
 
 function runMiddleware(req, res, fn) {
@@ -31,7 +32,8 @@ module.exports = async function handler(req, res) {
     const blob = await put(nomeArquivo, buffer, {
       access: 'public',
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      addRandomSuffix: false
+      addRandomSuffix: false,
+      token: BLOB_TOKEN
     });
 
     return res.status(200).json({
