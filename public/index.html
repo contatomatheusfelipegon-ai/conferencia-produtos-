@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conferencia de Produtos</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #fff; color: #111; display: flex; min-height: 100vh; }
+    .sidebar { width: 210px; border-right: 1px solid #e5e5e5; padding: 24px 0; flex-shrink: 0; position: fixed; height: 100vh; display: flex; flex-direction: column; }
+    .sidebar-title { font-size: 14px; font-weight: 700; padding: 0 20px 4px; }
+    .sidebar-sub { font-size: 12px; color: #888; padding: 0 20px 28px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 20px; font-size: 13px; color: #333; text-decoration: none; }
+    .nav-item:hover { background: #f5f5f5; }
+    .nav-item.active { border-left: 2px solid #111; background: #f5f5f5; font-weight: 600; padding-left: 18px; }
+    .nav-item i { font-size: 17px; }
+    .main { flex: 1; padding: 36px 40px; margin-left: 210px; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 28px; }
+    #dropzone { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed #ccc; border-radius: 12px; padding: 64px 40px; cursor: pointer; max-width: 500px; gap: 14px; transition: border-color .2s; }
+    #dropzone:hover { border-color: #111; }
+    #dropzone i { font-size: 52px; color: #bbb; }
+    .steps { display: flex; gap: 14px; max-width: 500px; margin-top: 32px; }
+    .step { flex: 1; background: #f9f9f9; border-radius: 10px; padding: 16px; }
+    .step-num { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .step-txt { font-size: 12px; color: #555; line-height: 1.5; }
+    .btn { margin-top: 24px; background: #111; color: #fff; border: none; padding: 12px 32px; border-radius: 8px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    #msg { margin-top: 16px; font-size: 13px; }
+    .ok { color: #166534; background: #f0fff4; border: 1px solid #86efac; border-radius: 8px; padding: 12px 18px; display: flex; align-items: center; gap: 8px; max-width: 500px; }
+    .err { color: #991b1b; background: #fff5f5; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 18px; max-width: 500px; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-title">Conferencia de Produtos</div>
+    <div class="sidebar-sub">Performance Nutrition</div>
+    <a href="/" class="nav-item active"><i class="ti ti-file-upload"></i> Importar Picking</a>
+    <a href="/pedidos.html" class="nav-item"><i class="ti ti-clipboard-list"></i> Pedidos</a>
+    <a href="/historico.html" class="nav-item"><i class="ti ti-history"></i> Historico</a>
+  </aside>
+  <main class="main">
+    <h1>Importar Picking</h1>
+    <label id="dropzone">
+      <i class="ti ti-file-type-pdf"></i>
+      <span style="font-size:15px;font-weight:600;">Arraste o PDF do picking aqui</span>
+      <span style="font-size:12px;color:#888;">ou clique para selecionar o arquivo</span>
+      <input type="file" id="fileInput" accept=".pdf" style="display:none">
+      <span id="fileName" style="font-size:12px;color:#555;"></span>
+    </label>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-txt">Importe o PDF do picking gerado pelo TOTVS</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-txt">O sistema le e agrupa os produtos automaticamente</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-txt">Baixe o Excel pronto para conferencia</div></div>
+    </div>
+    <button class="btn" id="submitBtn" onclick="enviar()">
+      <i class="ti ti-table-export"></i> Gerar Conferencia
+    </button>
+    <div id="msg"></div>
+  </main>
+  <script>
+    const input = document.getElementById('fileInput');
+    const drop  = document.getElementById('dropzone');
+    const name  = document.getElementById('fileName');
+    const btn   = document.getElementById('submitBtn');
+    const msg   = document.getElementById('msg');
+
+    input.addEventListener('change', () => {
+      if (input.files[0]) name.textContent = 'Arquivo: ' + input.files[0].name;
+    });
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.borderColor = '#111'; });
+    drop.addEventListener('dragleave', () => { drop.style.borderColor = '#ccc'; });
+    drop.addEventListener('drop', e => {
+      e.preventDefault(); drop.style.borderColor = '#ccc';
+      if (e.dataTransfer.files[0]) {
+        input.files = e.dataTransfer.files;
+        name.textContent = 'Arquivo: ' + e.dataTransfer.files[0].name;
+      }
+    });
+
+    async function enviar() {
+      if (!input.files[0]) { msg.innerHTML = '<div class="err">Selecione um PDF primeiro.</div>'; return; }
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ti ti-loader"></i> Processando...';
+      msg.innerHTML = '';
+
+      const form = new FormData();
+      form.append('pdf', input.files[0]);
+
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: form });
+        const data = await res.json();
+        if (data.ok) {
+          msg.innerHTML = `<div class="ok"><i class="ti ti-circle-check"></i> Conferencia gerada! Pedido ${data.pedido} — ${data.cliente} <a href="${data.url}" download="${data.nome}" style="margin-left:12px;color:#111;font-weight:600;">Baixar Excel</a></div>`;
+        } else {
+          msg.innerHTML = `<div class="err">Erro: ${data.error}</div>`;
+        }
+      } catch(e) {
+        msg.innerHTML = `<div class="err">Erro de conexao: ${e.message}</div>`;
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-table-export"></i> Gerar Conferencia';
+    }
+  </script>
+</body>
+</html>
