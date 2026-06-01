@@ -31,8 +31,7 @@ module.exports = async function handler(req, res) {
     const blob = await put(nomeArquivo, buffer, {
       access: 'public',
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      addRandomSuffix: false,
-      storeId: 'store_XeCDHbJl1hpJh7WK'
+      addRandomSuffix: false
     });
 
     return res.status(200).json({
