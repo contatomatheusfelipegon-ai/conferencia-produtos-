@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pedidos — Conferencia de Produtos</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #fff; color: #111; display: flex; min-height: 100vh; }
+    .sidebar { width: 210px; border-right: 1px solid #e5e5e5; padding: 24px 0; flex-shrink: 0; position: fixed; height: 100vh; }
+    .sidebar-title { font-size: 14px; font-weight: 700; padding: 0 20px 4px; }
+    .sidebar-sub { font-size: 12px; color: #888; padding: 0 20px 28px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 20px; font-size: 13px; color: #333; text-decoration: none; }
+    .nav-item:hover { background: #f5f5f5; }
+    .nav-item.active { border-left: 2px solid #111; background: #f5f5f5; font-weight: 600; padding-left: 18px; }
+    .nav-item i { font-size: 17px; }
+    .main { flex: 1; padding: 36px 40px; margin-left: 210px; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 28px; }
+    .card { display: flex; align-items: center; justify-content: space-between; border: 1px solid #e5e5e5; border-radius: 10px; padding: 18px 22px; margin-bottom: 10px; max-width: 620px; }
+    .card-info p { font-weight: 600; font-size: 14px; }
+    .card-info span { font-size: 12px; color: #888; margin-top: 2px; display: block; }
+    .btn-dl { background: #111; color: #fff; padding: 9px 18px; border-radius: 7px; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .empty { color: #888; font-size: 14px; margin-top: 20px; }
+    .loading { color: #888; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-title">Conferencia de Produtos</div>
+    <div class="sidebar-sub">Performance Nutrition</div>
+    <a href="/" class="nav-item"><i class="ti ti-file-upload"></i> Importar Picking</a>
+    <a href="/pedidos.html" class="nav-item active"><i class="ti ti-clipboard-list"></i> Pedidos</a>
+    <a href="/historico.html" class="nav-item"><i class="ti ti-history"></i> Historico</a>
+  </aside>
+  <main class="main">
+    <h1>Pedidos</h1>
+    <div id="lista"><div class="loading">Carregando...</div></div>
+  </main>
+  <script>
+    async function carregar() {
+      const lista = document.getElementById('lista');
+      try {
+        const res = await fetch('/api/historico');
+        const dados = await res.json();
+        if (!dados.length) {
+          lista.innerHTML = '<div class="empty">Nenhuma conferencia gerada ainda. <a href="/" style="color:#111;">Importe um PDF.</a></div>';
+          return;
+        }
+        lista.innerHTML = dados.map(a => `
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <i class="ti ti-file-spreadsheet" style="font-size:28px;color:#aaa;"></i>
+              <div class="card-info">
+                <p>Pedido ${a.pedido}</p>
+                <span>${a.nome} · ${a.data}</span>
+              </div>
+            </div>
+            <a href="${a.url}" download="${a.nome}" class="btn-dl">
+              <i class="ti ti-download"></i> Baixar
+            </a>
+          </div>
+        `).join('');
+      } catch(e) {
+        lista.innerHTML = '<div class="empty">Erro ao carregar pedidos.</div>';
+      }
+    }
+    carregar();
+  </script>
+</body>
+</html>
