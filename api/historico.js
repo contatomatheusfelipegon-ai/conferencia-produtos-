@@ -3,10 +3,7 @@ const { list } = require('@vercel/blob');
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
   try {
-    const { blobs } = await list({
-      prefix: 'Conferencia_',
-      storeId: 'store_XeCDHbJl1hpJh7WK'
-    });
+    const { blobs } = await list({ prefix: 'Conferencia_' });
 
     const arquivos = blobs.map(b => ({
       nome: b.pathname,
