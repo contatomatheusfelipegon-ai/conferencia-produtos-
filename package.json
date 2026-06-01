@@ -1,0 +1,11 @@
+{
+  "name": "conferencia-produtos",
+  "version": "1.0.0",
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "pdf-parse": "^1.1.1",
+    "@vercel/blob": "^0.23.0",
+    "multer": "^1.4.5-lts.1",
+    "express": "^4.18.2"
+  }
+}
