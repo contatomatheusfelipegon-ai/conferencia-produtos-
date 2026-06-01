@@ -1,9 +1,13 @@
 const { list } = require('@vercel/blob');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
   try {
-    const { blobs } = await list({ prefix: 'Conferencia_' });
+    const { blobs } = await list({
+      prefix: 'Conferencia_',
+      token: process.env.BLOB_READ_WRITE_TOKEN
+    });
+
     const arquivos = blobs.map(b => ({
       nome: b.pathname,
       pedido: b.pathname.replace('Conferencia_', '').replace('.xlsx', ''),
@@ -13,6 +17,7 @@ export default async function handler(req, res) {
         hour: '2-digit', minute: '2-digit'
       })
     }));
+
     return res.status(200).json(arquivos);
   } catch (err) {
     return res.status(500).json({ error: err.message });
