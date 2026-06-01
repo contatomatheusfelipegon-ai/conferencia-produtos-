@@ -1,9 +1,14 @@
 const { list } = require('@vercel/blob');
 
+const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN || 'vercel_blob_rw_XeCDHbJl1hpJh7WK_XUQ0FcVLIMA74HgSpO1FrJH1IfhqnW';
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
   try {
-    const { blobs } = await list({ prefix: 'Conferencia_' });
+    const { blobs } = await list({
+      prefix: 'Conferencia_',
+      token: BLOB_TOKEN
+    });
 
     const arquivos = blobs.map(b => ({
       nome: b.pathname,
