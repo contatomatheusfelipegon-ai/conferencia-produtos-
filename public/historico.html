@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Historico — Conferencia de Produtos</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #fff; color: #111; display: flex; min-height: 100vh; }
+    .sidebar { width: 210px; border-right: 1px solid #e5e5e5; padding: 24px 0; flex-shrink: 0; position: fixed; height: 100vh; }
+    .sidebar-title { font-size: 14px; font-weight: 700; padding: 0 20px 4px; }
+    .sidebar-sub { font-size: 12px; color: #888; padding: 0 20px 28px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 20px; font-size: 13px; color: #333; text-decoration: none; }
+    .nav-item:hover { background: #f5f5f5; }
+    .nav-item.active { border-left: 2px solid #111; background: #f5f5f5; font-weight: 600; padding-left: 18px; }
+    .nav-item i { font-size: 17px; }
+    .main { flex: 1; padding: 36px 40px; margin-left: 210px; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 28px; }
+    table { width: 100%; max-width: 700px; border-collapse: collapse; font-size: 13px; }
+    th { background: #f5f5f5; text-align: left; padding: 11px 14px; border-bottom: 1px solid #e5e5e5; font-size: 12px; color: #555; }
+    td { padding: 11px 14px; border-bottom: 1px solid #f0f0f0; }
+    .btn-dl { background: #f5f5f5; border: 1px solid #e5e5e5; padding: 6px 12px; border-radius: 6px; color: #111; text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+    .empty { color: #888; font-size: 14px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-title">Conferencia de Produtos</div>
+    <div class="sidebar-sub">Performance Nutrition</div>
+    <a href="/" class="nav-item"><i class="ti ti-file-upload"></i> Importar Picking</a>
+    <a href="/pedidos.html" class="nav-item"><i class="ti ti-clipboard-list"></i> Pedidos</a>
+    <a href="/historico.html" class="nav-item active"><i class="ti ti-history"></i> Historico</a>
+  </aside>
+  <main class="main">
+    <h1>Historico</h1>
+    <div id="conteudo"><div style="color:#888;font-size:14px;">Carregando...</div></div>
+  </main>
+  <script>
+    async function carregar() {
+      const el = document.getElementById('conteudo');
+      try {
+        const res = await fetch('/api/historico');
+        const dados = await res.json();
+        if (!dados.length) {
+          el.innerHTML = '<div class="empty">Nenhum arquivo gerado ainda. <a href="/" style="color:#111;">Importe um PDF.</a></div>';
+          return;
+        }
+        el.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Arquivo</th>
+                <th>Gerado em</th>
+                <th style="text-align:center">Download</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${dados.map(a => `
+                <tr>
+                  <td>${a.pedido}</td>
+                  <td style="color:#888">${a.nome}</td>
+                  <td>${a.data}</td>
+                  <td style="text-align:center">
+                    <a href="${a.url}" download="${a.nome}" class="btn-dl">
+                      <i class="ti ti-download"></i> xlsx
+                    </a>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>`;
+      } catch(e) {
+        el.innerHTML = '<div class="empty">Erro ao carregar historico.</div>';
+      }
+    }
+    carregar();
+  </script>
+</body>
+</html>
