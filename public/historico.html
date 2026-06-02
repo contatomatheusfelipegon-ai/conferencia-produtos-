@@ -16,12 +16,31 @@
     .nav-item.active { border-left: 2px solid #111; background: #f5f5f5; font-weight: 600; padding-left: 18px; }
     .nav-item i { font-size: 17px; }
     .main { flex: 1; padding: 36px 40px; margin-left: 210px; }
-    h1 { font-size: 20px; font-weight: 700; margin-bottom: 28px; }
-    table { width: 100%; max-width: 700px; border-collapse: collapse; font-size: 13px; }
-    th { background: #f5f5f5; text-align: left; padding: 11px 14px; border-bottom: 1px solid #e5e5e5; font-size: 12px; color: #555; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+    .filtros { display: flex; gap: 10px; margin-bottom: 20px; max-width: 780px; }
+    .filtros input { flex: 1; border: 1px solid #e5e5e5; border-radius: 8px; padding: 9px 14px; font-size: 13px; outline: none; }
+    .filtros input:focus { border-color: #111; }
+    .filtros select { border: 1px solid #e5e5e5; border-radius: 8px; padding: 9px 14px; font-size: 13px; background: #fff; cursor: pointer; outline: none; }
+    table { width: 100%; max-width: 780px; border-collapse: collapse; font-size: 13px; }
+    th { background: #f5f5f5; text-align: left; padding: 10px 14px; border-bottom: 1px solid #e5e5e5; font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.04em; }
     td { padding: 11px 14px; border-bottom: 1px solid #f0f0f0; }
-    .btn-dl { background: #f5f5f5; border: 1px solid #e5e5e5; padding: 6px 12px; border-radius: 6px; color: #111; text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+    tr:hover td { background: #fafafa; }
+    .badge { font-size: 11px; padding: 3px 10px; border-radius: 99px; font-weight: 500; }
+    .badge-aguardando { background: #FEF3C7; color: #92400E; }
+    .badge-parcial { background: #FFF7ED; color: #C2410C; }
+    .badge-completo { background: #F0FDF4; color: #166534; }
+    .btn-dl { background: #f5f5f5; border: 1px solid #e5e5e5; padding: 5px 12px; border-radius: 6px; color: #111; text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-del { background: none; border: none; cursor: pointer; color: #ccc; font-size: 15px; padding: 4px; }
+    .btn-del:hover { color: #ef4444; }
     .empty { color: #888; font-size: 14px; margin-top: 20px; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 28px; width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+    .modal h2 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .modal p { font-size: 13px; color: #555; margin-bottom: 24px; }
+    .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-cancel { background: #f5f5f5; border: none; border-radius: 7px; padding: 9px 18px; font-size: 13px; cursor: pointer; }
+    .btn-confirm { background: #ef4444; color: #fff; border: none; border-radius: 7px; padding: 9px 18px; font-size: 13px; cursor: pointer; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -32,49 +51,124 @@
     <a href="/pedidos.html" class="nav-item"><i class="ti ti-clipboard-list"></i> Pedidos</a>
     <a href="/historico.html" class="nav-item active"><i class="ti ti-history"></i> Historico</a>
   </aside>
+
   <main class="main">
     <h1>Historico</h1>
+    <div class="filtros">
+      <input id="busca" type="text" placeholder="Buscar por pedido ou cliente..." oninput="filtrar()">
+      <select id="filtroStatus" onchange="filtrar()">
+        <option value="">Todos os status</option>
+        <option value="Aguardando">Aguardando</option>
+        <option value="Parcial">Parcial</option>
+        <option value="Completo">Completo</option>
+      </select>
+    </div>
     <div id="conteudo"><div style="color:#888;font-size:14px;">Carregando...</div></div>
   </main>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h2>Excluir pedido</h2>
+      <p id="modalTxt"></p>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-confirm" onclick="confirmarExclusao()">Sim, excluir</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    async function carregar() {
+    let todos = [];
+    let pedidoParaExcluir = null;
+
+    function badgeHtml(status) {
+      const cls = { 'Aguardando': 'badge-aguardando', 'Parcial': 'badge-parcial', 'Completo': 'badge-completo' };
+      return `<span class="badge ${cls[status] || 'badge-aguardando'}">${status || 'Aguardando'}</span>`;
+    }
+
+    function renderTabela(dados) {
       const el = document.getElementById('conteudo');
+      if (!dados.length) {
+        el.innerHTML = '<div class="empty">Nenhum resultado encontrado.</div>';
+        return;
+      }
+      el.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Cliente</th>
+              <th>Produtos</th>
+              <th>Gerado em</th>
+              <th>Status</th>
+              <th style="text-align:center">Download</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dados.map(a => `
+              <tr>
+                <td style="font-weight:600">${a.pedido}</td>
+                <td style="color:#555;font-size:12px;">${a.cliente || '-'}</td>
+                <td style="color:#888">${a.totalProdutos || 0} prod · ${a.totalUnidades || 0} un</td>
+                <td style="color:#888">${a.data}</td>
+                <td>${badgeHtml(a.status)}</td>
+                <td style="text-align:center">
+                  <a href="${a.url}" download="${a.nome}" class="btn-dl">
+                    <i class="ti ti-download"></i> xlsx
+                  </a>
+                </td>
+                <td>
+                  <button class="btn-del" onclick="abrirModal('${a.pedido}', '${a.cliente}')">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    function filtrar() {
+      const q = document.getElementById('busca').value.toLowerCase();
+      const s = document.getElementById('filtroStatus').value;
+      const filtrado = todos.filter(a =>
+        ((a.pedido || '').toLowerCase().includes(q) || (a.cliente || '').toLowerCase().includes(q)) &&
+        (!s || (a.status || 'Aguardando') === s)
+      );
+      renderTabela(filtrado);
+    }
+
+    async function carregar() {
       try {
         const res = await fetch('/api/historico');
-        const dados = await res.json();
-        if (!dados.length) {
-          el.innerHTML = '<div class="empty">Nenhum arquivo gerado ainda. <a href="/" style="color:#111;">Importe um PDF.</a></div>';
-          return;
-        }
-        el.innerHTML = `
-          <table>
-            <thead>
-              <tr>
-                <th>Pedido</th>
-                <th>Arquivo</th>
-                <th>Gerado em</th>
-                <th style="text-align:center">Download</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${dados.map(a => `
-                <tr>
-                  <td>${a.pedido}</td>
-                  <td style="color:#888">${a.nome}</td>
-                  <td>${a.data}</td>
-                  <td style="text-align:center">
-                    <a href="${a.url}" download="${a.nome}" class="btn-dl">
-                      <i class="ti ti-download"></i> xlsx
-                    </a>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>`;
+        todos = await res.json();
+        renderTabela(todos);
       } catch(e) {
-        el.innerHTML = '<div class="empty">Erro ao carregar historico.</div>';
+        document.getElementById('conteudo').innerHTML = '<div class="empty">Erro ao carregar historico.</div>';
       }
     }
+
+    function abrirModal(pedido, cliente) {
+      pedidoParaExcluir = pedido;
+      document.getElementById('modalTxt').textContent =
+        `Tem certeza que deseja excluir o pedido ${pedido} (${cliente})? Esta acao nao pode ser desfeita.`;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function fecharModal() {
+      pedidoParaExcluir = null;
+      document.getElementById('modalOverlay').classList.remove('show');
+    }
+
+    async function confirmarExclusao() {
+      if (!pedidoParaExcluir) return;
+      await fetch(`/api/historico?pedido=${pedidoParaExcluir}`, { method: 'DELETE' });
+      todos = todos.filter(a => a.pedido !== pedidoParaExcluir);
+      fecharModal();
+      filtrar();
+    }
+
     carregar();
   </script>
 </body>
