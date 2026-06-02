@@ -21,7 +21,6 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   await runMiddleware(req, res, upload.single('pdf'));
-
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
 
   try {
@@ -29,6 +28,7 @@ module.exports = async function handler(req, res) {
     const nomeArquivo = `Conferencia_${cab.pedido}.xlsx`;
     const buffer = await gerarExcel(cab, produtos);
 
+    // Salva o Excel
     const blob = await put(nomeArquivo, buffer, {
       access: 'public',
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -36,13 +36,25 @@ module.exports = async function handler(req, res) {
       token: BLOB_TOKEN
     });
 
-    return res.status(200).json({
-      ok: true,
+    // Salva metadados como JSON
+    const meta = {
       pedido: cab.pedido,
       cliente: cab.cliente,
       nome: nomeArquivo,
-      url: blob.url
+      url: blob.url,
+      status: 'Aguardando',
+      totalProdutos: produtos.length,
+      totalUnidades: produtos.reduce((s, p) => s + p.qtde, 0),
+      criadoEm: new Date().toISOString()
+    };
+    await put(`meta_${cab.pedido}.json`, JSON.stringify(meta), {
+      access: 'public',
+      contentType: 'application/json',
+      addRandomSuffix: false,
+      token: BLOB_TOKEN
     });
+
+    return res.status(200).json({ ok: true, ...meta });
 
   } catch (err) {
     console.error(err);
