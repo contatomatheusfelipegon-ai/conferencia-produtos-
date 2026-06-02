@@ -16,13 +16,37 @@
     .nav-item.active { border-left: 2px solid #111; background: #f5f5f5; font-weight: 600; padding-left: 18px; }
     .nav-item i { font-size: 17px; }
     .main { flex: 1; padding: 36px 40px; margin-left: 210px; }
-    h1 { font-size: 20px; font-weight: 700; margin-bottom: 28px; }
-    .card { display: flex; align-items: center; justify-content: space-between; border: 1px solid #e5e5e5; border-radius: 10px; padding: 18px 22px; margin-bottom: 10px; max-width: 620px; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+    .ok-msg { background: #f0fff4; border: 1px solid #86efac; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; font-size: 13px; color: #166534; display: flex; align-items: center; gap: 8px; max-width: 680px; }
+    .busca { display: flex; gap: 10px; margin-bottom: 20px; max-width: 680px; }
+    .busca input { flex: 1; border: 1px solid #e5e5e5; border-radius: 8px; padding: 9px 14px; font-size: 13px; outline: none; }
+    .busca input:focus { border-color: #111; }
+    .card { display: flex; align-items: center; justify-content: space-between; border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px 20px; margin-bottom: 10px; max-width: 680px; }
+    .card-left { display: flex; align-items: center; gap: 14px; }
+    .card-left i { font-size: 26px; color: #bbb; }
     .card-info p { font-weight: 600; font-size: 14px; }
-    .card-info span { font-size: 12px; color: #888; margin-top: 2px; display: block; }
-    .btn-dl { background: #111; color: #fff; padding: 9px 18px; border-radius: 7px; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .card-info .cliente { font-size: 12px; color: #555; margin-top: 2px; }
+    .card-info .meta { font-size: 11px; color: #aaa; margin-top: 2px; }
+    .card-right { display: flex; align-items: center; gap: 10px; }
+    .badge { font-size: 11px; padding: 3px 10px; border-radius: 99px; font-weight: 500; white-space: nowrap; }
+    .badge-aguardando { background: #FEF3C7; color: #92400E; }
+    .badge-parcial { background: #FFF7ED; color: #C2410C; }
+    .badge-completo { background: #F0FDF4; color: #166534; }
+    .btn-dl { background: #111; color: #fff; padding: 8px 16px; border-radius: 7px; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-del { background: none; border: 1px solid #e5e5e5; border-radius: 7px; padding: 7px 10px; cursor: pointer; color: #aaa; font-size: 14px; display: inline-flex; align-items: center; }
+    .btn-del:hover { border-color: #f87171; color: #ef4444; }
+    .select-status { font-size: 12px; border: 1px solid #e5e5e5; border-radius: 6px; padding: 4px 8px; cursor: pointer; background: #fff; }
     .empty { color: #888; font-size: 14px; margin-top: 20px; }
-    .loading { color: #888; font-size: 14px; }
+
+    /* Modal de confirmação */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 28px; width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+    .modal h2 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .modal p { font-size: 13px; color: #555; margin-bottom: 24px; }
+    .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-cancel { background: #f5f5f5; border: none; border-radius: 7px; padding: 9px 18px; font-size: 13px; cursor: pointer; }
+    .btn-confirm { background: #ef4444; color: #fff; border: none; border-radius: 7px; padding: 9px 18px; font-size: 13px; cursor: pointer; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -33,38 +57,122 @@
     <a href="/pedidos.html" class="nav-item active"><i class="ti ti-clipboard-list"></i> Pedidos</a>
     <a href="/historico.html" class="nav-item"><i class="ti ti-history"></i> Historico</a>
   </aside>
+
   <main class="main">
     <h1>Pedidos</h1>
-    <div id="lista"><div class="loading">Carregando...</div></div>
+    <div id="okMsg" style="display:none" class="ok-msg"><i class="ti ti-circle-check"></i> Conferencia gerada com sucesso!</div>
+
+    <div class="busca">
+      <input id="busca" type="text" placeholder="Buscar por pedido ou cliente..." oninput="filtrar()">
+    </div>
+
+    <div id="lista"><div style="color:#888;font-size:14px;">Carregando...</div></div>
   </main>
+
+  <!-- Modal confirmação exclusão -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h2>Excluir pedido</h2>
+      <p id="modalTxt">Tem certeza que deseja excluir este pedido? Esta acao nao pode ser desfeita.</p>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-confirm" onclick="confirmarExclusao()">Sim, excluir</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    async function carregar() {
+    let todos = [];
+    let pedidoParaExcluir = null;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('ok') === '1') document.getElementById('okMsg').style.display = 'flex';
+
+    function badgeHtml(status) {
+      const cls = { 'Aguardando': 'badge-aguardando', 'Parcial': 'badge-parcial', 'Completo': 'badge-completo' };
+      return `<span class="badge ${cls[status] || 'badge-aguardando'}">${status || 'Aguardando'}</span>`;
+    }
+
+    function renderLista(dados) {
       const lista = document.getElementById('lista');
+      if (!dados.length) {
+        lista.innerHTML = '<div class="empty">Nenhum pedido encontrado. <a href="/" style="color:#111;">Importe um PDF.</a></div>';
+        return;
+      }
+      lista.innerHTML = dados.map(a => `
+        <div class="card" id="card-${a.pedido}">
+          <div class="card-left">
+            <i class="ti ti-file-spreadsheet"></i>
+            <div class="card-info">
+              <p>Pedido ${a.pedido}</p>
+              <div class="cliente">${a.cliente || ''}</div>
+              <div class="meta">${a.totalProdutos || 0} produtos · ${a.totalUnidades || 0} unidades · ${a.data}</div>
+            </div>
+          </div>
+          <div class="card-right">
+            ${badgeHtml(a.status)}
+            <select class="select-status" onchange="atualizarStatus('${a.pedido}', this.value)">
+              <option ${a.status==='Aguardando'?'selected':''}>Aguardando</option>
+              <option ${a.status==='Parcial'?'selected':''}>Parcial</option>
+              <option ${a.status==='Completo'?'selected':''}>Completo</option>
+            </select>
+            <a href="${a.url}" download="${a.nome}" class="btn-dl"><i class="ti ti-download"></i> xlsx</a>
+            <button class="btn-del" onclick="abrirModal('${a.pedido}', '${a.cliente}')"><i class="ti ti-trash"></i></button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filtrar() {
+      const q = document.getElementById('busca').value.toLowerCase();
+      const filtrado = todos.filter(a =>
+        (a.pedido || '').toLowerCase().includes(q) ||
+        (a.cliente || '').toLowerCase().includes(q)
+      );
+      renderLista(filtrado);
+    }
+
+    async function carregar() {
       try {
         const res = await fetch('/api/historico');
-        const dados = await res.json();
-        if (!dados.length) {
-          lista.innerHTML = '<div class="empty">Nenhuma conferencia gerada ainda. <a href="/" style="color:#111;">Importe um PDF.</a></div>';
-          return;
-        }
-        lista.innerHTML = dados.map(a => `
-          <div class="card">
-            <div style="display:flex;align-items:center;gap:14px;">
-              <i class="ti ti-file-spreadsheet" style="font-size:28px;color:#aaa;"></i>
-              <div class="card-info">
-                <p>Pedido ${a.pedido}</p>
-                <span>${a.nome} · ${a.data}</span>
-              </div>
-            </div>
-            <a href="${a.url}" download="${a.nome}" class="btn-dl">
-              <i class="ti ti-download"></i> Baixar
-            </a>
-          </div>
-        `).join('');
+        todos = await res.json();
+        renderLista(todos);
       } catch(e) {
-        lista.innerHTML = '<div class="empty">Erro ao carregar pedidos.</div>';
+        document.getElementById('lista').innerHTML = '<div class="empty">Erro ao carregar pedidos.</div>';
       }
     }
+
+    async function atualizarStatus(pedido, status) {
+      await fetch('/api/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pedido, status })
+      });
+      const idx = todos.findIndex(a => a.pedido === pedido);
+      if (idx !== -1) todos[idx].status = status;
+      filtrar();
+    }
+
+    function abrirModal(pedido, cliente) {
+      pedidoParaExcluir = pedido;
+      document.getElementById('modalTxt').textContent =
+        `Tem certeza que deseja excluir o pedido ${pedido} (${cliente})? Esta acao nao pode ser desfeita.`;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function fecharModal() {
+      pedidoParaExcluir = null;
+      document.getElementById('modalOverlay').classList.remove('show');
+    }
+
+    async function confirmarExclusao() {
+      if (!pedidoParaExcluir) return;
+      await fetch(`/api/historico?pedido=${pedidoParaExcluir}`, { method: 'DELETE' });
+      todos = todos.filter(a => a.pedido !== pedidoParaExcluir);
+      fecharModal();
+      filtrar();
+    }
+
     carregar();
   </script>
 </body>
